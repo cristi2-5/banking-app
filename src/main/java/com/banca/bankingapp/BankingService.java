@@ -29,6 +29,10 @@ public class BankingService {
         customers.add(customer);
     }
 
+    public Set<Customer> getCustomers(){
+        return customers;
+    }
+
     public Customer findCustomerByCnp(String cnp) {
         return customers.stream()
                 .filter(c -> c.getCnp().equals(cnp))
@@ -82,6 +86,10 @@ public class BankingService {
         }
     }
 
+    public Account getAccount(String iban) {
+        return accounts.get(iban);
+    }
+
     public void displayAllCustomers(){
         for(Customer c : customers){
             System.out.println(c);
@@ -89,15 +97,12 @@ public class BankingService {
         }
     }
 
-    public void getAccountTransactions(String iban){
+    public List<Transaction> getAccountTransactions(String iban){
         Account a = accounts.get(iban);
         if(a!=null){
-            List<Transaction> transactions = a.getTransactions();
-            for(Transaction t : transactions){
-                System.out.println(t);
-                System.out.println();
-            }
+            return a.getTransactions();
         }
+        return new ArrayList<>();
     }
 
     public void applyInterestToAllSavings() {

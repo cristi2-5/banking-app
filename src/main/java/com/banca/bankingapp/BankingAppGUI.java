@@ -1,130 +1,86 @@
 package com.banca.bankingapp;
 
 import javafx.application.Application;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 public class BankingAppGUI extends Application {
 
     private BankingService bankingService;
-    private Stage window; // Fereastra principala
+    private Stage window;
+    private Customer loggedInCustomer;
 
     @Override
     public void init() {
-        // Aici inițializăm "creierul" băncii înainte să se deseneze interfața
         bankingService = new BankingService();
+
+        Address addr1 = new Address("București", "Calea Victoriei 12", "010061");
+        Customer c1 = new Customer("Ionescu", "Ion", "1234567890123", addr1);
+        c1.setUsername("ion");
+        c1.setPassword("ion123");
+        bankingService.addCustomer(c1);
+
+        // Adăugăm un cont de tip CheckingAccount (taxă 5 RON)
+        CheckingAccount acc1 = new CheckingAccount("RO01BANC123", 1500.0, c1, 5.0);
+        bankingService.addAccountToCustomer(c1.getCnp(), acc1);
+
+
+        // --- USER 2: Popescu Maria (Cont Economii) ---
+        Address addr2 = new Address("Cluj-Napoca", "Str. Eroilor 5", "400129");
+        Customer c2 = new Customer("Popescu", "Maria", "2345678901234", addr2);
+        c2.setUsername("maria");
+        c2.setPassword("maria123");
+        bankingService.addCustomer(c2);
+
+        // Adăugăm un cont de tip SavingsAccount (dobândă 5%)
+        SavingsAccount acc2 = new SavingsAccount("RO02BANC456", 5000.0, c2, 0.05);
+        bankingService.addAccountToCustomer(c2.getCnp(), acc2);
+
+
+        // --- USER 3: Vasilescu Dan (Două conturi) ---
+        Address addr3 = new Address("Iași", "Str. Palat 1", "700032");
+        Customer c3 = new Customer("Vasilescu", "Dan", "1345678901234", addr3);
+        c3.setUsername("dan");
+        c3.setPassword("dan123");
+        bankingService.addCustomer(c3);
+
+        // Dan are și cont curent și cont de economii pentru a testa lista multiplă
+        bankingService.addAccountToCustomer(c3.getCnp(), new CheckingAccount("RO03BANC789", 200.0, c3, 5.0));
+        bankingService.addAccountToCustomer(c3.getCnp(), new SavingsAccount("RO04BANC000", 10000.0, c3, 0.07));
     }
 
     @Override
     public void start(Stage primaryStage) {
         this.window = primaryStage;
-        window.setTitle("Java Bank - Autentificare");
+        window.setTitle("Java Bank");
 
-        // Desenăm scena de Login
-        Scene loginScene = createLoginScene();
-
-        window.setScene(loginScene);
+        // Pornim direct cu ecranul de Login
+        showLoginScene();
         window.show();
     }
 
-    // Metodă separată pentru a păstra codul curat
-    private Scene createLoginScene() {
-        // 1. Actorii
-        Label titleLabel = new Label("Autentificare Java Bank");
-        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
+    // --- METODE DE NAVIGARE --- //
 
-        TextField userField = new TextField();
-        userField.setPromptText("Nume de utilizator");
-        userField.setMaxWidth(200);
-
-        PasswordField passField = new PasswordField();
-        passField.setPromptText("Parola");
-        passField.setMaxWidth(200);
-
-        Button loginBtn = new Button("Intră în cont");
-        Button registerBtn = new Button("Nu ai cont? Înregistrează-te");
-        Label messageLabel = new Label();
-
-        // 2. Logica Butoanelor
-        loginBtn.setOnAction(e -> {
-            String user = userField.getText();
-            String pass = passField.getText();
-            String role = bankingService.login(user, pass);
-
-            if (role.equals("ADMIN")) {
-                messageLabel.setText("Bine ai venit, Admin!");
-                messageLabel.setStyle("-fx-text-fill: green;");
-                // Aici vom schimba scena spre Dashboard Admin (Pasul urmator)
-            } else if (role.equals("USER")) {
-                messageLabel.setText("Logare reușită!");
-                messageLabel.setStyle("-fx-text-fill: green;");
-                // Aici vom schimba scena spre Dashboard User
-            } else {
-                messageLabel.setText("Date incorecte!");
-                messageLabel.setStyle("-fx-text-fill: red;");
-            }
-        });
-
-        registerBtn.setOnAction(e -> {
-            // Când apasă înregistrare, schimbăm "decorul" (Scena)
-            window.setScene(createRegisterScene());
-        });
-
-        // 3. Așezarea în pagină (Vertical Box)
-        VBox layout = new VBox(15);
-        layout.setAlignment(Pos.CENTER);
-        layout.setPadding(new Insets(20));
-        layout.getChildren().addAll(titleLabel, userField, passField, loginBtn, registerBtn, messageLabel);
-
-        return new Scene(layout, 400, 400);
+    public void showLoginScene() {
+        // Cerem Scene-ul de la clasa LoginView și îi dăm acces la "app" (this) și la serviciu
+        Scene scene = LoginView.getScene(this, bankingService);
+        window.setScene(scene);
     }
 
-    // Metoda care desenează scena de Înregistrare
-    private Scene createRegisterScene() {
-        Label titleLabel = new Label("Înregistrare Client Nou");
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+    public void showRegisterScene() {
+        Scene scene = RegisterView.getScene(this, bankingService);
+        window.setScene(scene);
+    }
 
-        TextField numeField = new TextField(); numeField.setPromptText("Nume Familie");
-        TextField prenumeField = new TextField(); prenumeField.setPromptText("Prenume");
-        TextField cnpField = new TextField(); cnpField.setPromptText("CNP");
-        TextField userField = new TextField(); userField.setPromptText("Username dorit");
-        PasswordField passField = new PasswordField(); passField.setPromptText("Parola");
+    public void showUserDashboard(Customer customer) {
+        this.loggedInCustomer = customer; // Salvăm cine s-a logat
+        Scene scene = UserDashboardView.getScene(this, bankingService, loggedInCustomer);
+        window.setScene(scene);
+    }
 
-        Button submitBtn = new Button("Creează Cont");
-        Button backBtn = new Button("Înapoi la Login");
-        Label messageLabel = new Label();
-
-        // Logica înregistrării
-        submitBtn.setOnAction(e -> {
-            // Creăm adresa dummy și clientul
-            Address addr = new Address("București", "Victoriei", "1");
-            Customer newCust = new Customer(numeField.getText(), prenumeField.getText(), cnpField.getText(), addr);
-            newCust.setUsername(userField.getText());
-            newCust.setPassword(passField.getText());
-
-            bankingService.addCustomer(newCust);
-
-            messageLabel.setText("Cont creat! Acum te poți loga.");
-            messageLabel.setStyle("-fx-text-fill: green;");
-        });
-
-        // Butonul de înapoi ne întoarce la scena de Login
-        backBtn.setOnAction(e -> window.setScene(createLoginScene()));
-
-        VBox layout = new VBox(10);
-        layout.setAlignment(Pos.CENTER);
-        layout.setMaxWidth(250); // Micsoram casutele
-        layout.getChildren().addAll(titleLabel, numeField, prenumeField, cnpField, userField, passField, submitBtn, backBtn, messageLabel);
-
-        // Folosim un alt VBox exterior pentru a centra totul frumos
-        VBox root = new VBox(layout);
-        root.setAlignment(Pos.CENTER);
-
-        return new Scene(root, 400, 400);
+    public void logout() {
+        this.loggedInCustomer = null;
+        showLoginScene();
     }
 
     public static void main(String[] args) {
