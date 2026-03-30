@@ -68,7 +68,7 @@ public class RegisterView {
             Address addr = new Address(cityField.getText(), streetField.getText(), zipField.getText());
 
             // 2. Creăm obiectul Customer
-            Customer newCust = new Customer(lastNameField.getText(), firstNameField.getText(), cnpField.getText(), addr);
+            Customer newCust = new Customer(cnpField.getText(),firstNameField.getText(), lastNameField.getText(), addr);
             newCust.setUsername(userField.getText());
             newCust.setPassword(passField.getText());
 

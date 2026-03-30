@@ -34,4 +34,9 @@ public final class Transaction {
     public long getTimestamp() {
         return timestamp;
     }
+
+    @Override
+    public String toString() {
+        return this.type + ": " + this.amount + " RON";
+    }
 }

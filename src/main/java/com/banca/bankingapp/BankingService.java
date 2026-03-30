@@ -79,22 +79,20 @@ public class BankingService {
         }
     }
 
-    public void getAccountBalance(String iban){
+    public double getAccountBalance(String iban){
         Account a = accounts.get(iban);
         if(a!=null){
-            System.out.println(a.getBalance());
+            return a.getBalance();
         }
+       return 0.0;
     }
 
     public Account getAccount(String iban) {
         return accounts.get(iban);
     }
 
-    public void displayAllCustomers(){
-        for(Customer c : customers){
-            System.out.println(c);
-            System.out.println();
-        }
+    public Set<Customer> displayAllCustomers(){
+        return customers;
     }
 
     public List<Transaction> getAccountTransactions(String iban){

@@ -46,4 +46,8 @@ public abstract class Card {
 
     public abstract void displayCardType();
 
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + " - " + this.cardNumber + " (Exp: " + this.expiryDate + ")";
+    }
 }

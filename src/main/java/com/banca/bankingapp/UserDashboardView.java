@@ -19,13 +19,18 @@ public class UserDashboardView {
         Label welcomeLabel = new Label("Salutare, " + loggedInCustomer.getFirstName() + "!");
         welcomeLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #2980b9;");
 
+        Label totalBalanceLabel = new Label();
+        totalBalanceLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #27ae60;");
+
         ListView<String> accountsList = new ListView<>();
-        actualizeazaListaConturi(accountsList, loggedInCustomer);
+        actualizeazaConturi(accountsList, loggedInCustomer);
+        actualizeazaSold(accountsList, totalBalanceLabel, loggedInCustomer, bankingService);
 
         // Butoane Acțiuni Existente
         Button btnDeposit = new Button("Depunere");
         Button btnWithdraw = new Button("Retragere");
         Button btnTransfer = new Button("Transfer");
+        Button btnStatement = new Button("Extras de Cont");
         Button btnHistory = new Button("Istoric Tranzacții");
         Button btnCards = new Button("Carduri");
 
@@ -39,7 +44,7 @@ public class UserDashboardView {
         HBox topActions = new HBox(15, btnOpenAccount);
         topActions.setAlignment(Pos.CENTER);
 
-        HBox bottomActions = new HBox(10, btnDeposit, btnWithdraw, btnTransfer, btnHistory, btnCards);
+        HBox bottomActions = new HBox(10, btnDeposit, btnWithdraw, btnTransfer,btnStatement, btnHistory, btnCards);
         bottomActions.setAlignment(Pos.CENTER);
 
         // --- LOGICA: DESCHIDERE CONT NOU ---
@@ -67,7 +72,7 @@ public class UserDashboardView {
                 bankingService.addAccountToCustomer(loggedInCustomer.getCnp(), contNou);
 
                 // 3. Refresh vizual
-                actualizeazaListaConturi(accountsList, loggedInCustomer);
+                actualizeazaConturi(accountsList, loggedInCustomer);
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setContentText("Felicitări! Ai deschis un " + type + " cu IBAN-ul: " + iban);
@@ -85,7 +90,8 @@ public class UserDashboardView {
                 input.showAndWait().ifPresent(suma -> {
                     try {
                         bankingService.deposit(iban, Double.parseDouble(suma));
-                        actualizeazaListaConturi(accountsList, loggedInCustomer);
+                        actualizeazaConturi(accountsList, loggedInCustomer);
+                        actualizeazaSold(accountsList, totalBalanceLabel, loggedInCustomer, bankingService);
                     } catch (Exception ex) { afiseazaEroare("Sumă invalidă!"); }
                 });
             }
@@ -106,7 +112,8 @@ public class UserDashboardView {
                     try {
                         double amount = Double.parseDouble(suma);
                         bankingService.withdraw(iban, amount);
-                        actualizeazaListaConturi(accountsList, loggedInCustomer); // Refresh vizual
+                        actualizeazaConturi(accountsList, loggedInCustomer); // Refresh vizual
+                        actualizeazaSold(accountsList, totalBalanceLabel, loggedInCustomer, bankingService);
                     } catch (NumberFormatException ex) {
                         afiseazaEroare("Te rog să introduci un număr valid!");
                     }
@@ -155,7 +162,8 @@ public class UserDashboardView {
 
                             // Apelăm metoda ta din BankingService
                             bankingService.transfer(sourceIban, destIban, amount);
-                            actualizeazaListaConturi(accountsList, loggedInCustomer); // Refresh la ecran
+                            actualizeazaConturi(accountsList, loggedInCustomer); // Refresh la ecran
+                            actualizeazaSold(accountsList, totalBalanceLabel, loggedInCustomer, bankingService);
 
                             Alert alert = new Alert(Alert.AlertType.INFORMATION);
                             alert.setContentText("Transfer procesat! Verifică soldul.");
@@ -205,7 +213,31 @@ public class UserDashboardView {
             }
         });
 
-        // --- CARDURI (Reconstruit pentru Credit și Debit) ---
+
+        btnStatement.setOnAction(e -> {
+            String selected = accountsList.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                String iban = selected.split(" - ")[0];
+                List<Transaction> tranzactii = bankingService.getAccountTransactions(iban);
+
+                Dialog<Void> dialog = new Dialog<>();
+                dialog.setTitle("Extras de Cont");
+                dialog.setHeaderText("Extras generat pentru IBAN:\n" + iban);
+                dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+                ListView<String> historyList = new ListView<>();
+                historyList.setPrefSize(350, 250);
+                if (tranzactii.isEmpty()) historyList.getItems().add("Nicio tranzacție găsită.");
+                else tranzactii.forEach(t -> historyList.getItems().add(t.toString()));
+
+                dialog.getDialogPane().setContent(historyList);
+                dialog.showAndWait();
+            } else {
+                afiseazaEroare("Selectează un cont pentru extras!");
+            }
+        });
+
+        // --- GESTIUNE CARDURI (Emitere + Schimbare PIN) ---
         btnCards.setOnAction(e -> {
             String selected = accountsList.getSelectionModel().getSelectedItem();
             if (selected != null) {
@@ -214,20 +246,22 @@ public class UserDashboardView {
 
                 Dialog<Void> dialog = new Dialog<>();
                 dialog.setTitle("Gestiune Carduri");
-                dialog.setHeaderText("Carduri pentru contul:\n" + iban);
+                dialog.setHeaderText("Carduri pentru contul: " + iban);
                 dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 
-                VBox vBox = new VBox(15);
-                vBox.setPadding(new Insets(20));
+                VBox vBox = new VBox(10);
+                vBox.setPadding(new Insets(15));
 
-                ListView<String> listaCarduri = new ListView<>();
-                if (account.getCards() != null) {
-                   account.getCards().forEach(c -> listaCarduri.getItems().add(c.getClass().getSimpleName() + " - " + c.getCardNumber()));
+                // Folosim direct obiecte Card pentru a putea lua PIN-ul/Numărul mai târziu
+                ListView<Card> listaCarduri = new ListView<>();
+                if(account.getCards() != null) {
+                    listaCarduri.getItems().addAll(account.getCards());
                 }
 
                 Button btnEmit = new Button("+ Emite Card Nou");
-                btnEmit.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white;");
+                Button btnChangePin = new Button("Schimbă PIN");
 
+                // 1. LOGICA PENTRU EMITERE CARD NOU
                 btnEmit.setOnAction(ev -> {
                     ChoiceDialog<String> choiceDialog = new ChoiceDialog<>("DebitCard", "DebitCard", "CreditCard");
                     choiceDialog.setTitle("Tip Card");
@@ -247,27 +281,53 @@ public class UserDashboardView {
                             newCard = new DebitCard(cardNum, pin, expiry, true, account);
                         }
 
+                        // Salvăm în cont și afișăm pe ecran
                         account.addCard(newCard);
-                        listaCarduri.getItems().add(tipCard + " - " + cardNum);
+                        listaCarduri.getItems().add(newCard);
 
                         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                        alert.setContentText("Card emis cu succes!\nTip: " + tipCard + "\nNr: " + cardNum + "\nPIN: " + pin);
+                        alert.setContentText("Card emis cu succes!\nTip: " + tipCard + "\nNr: " + cardNum + "\nPIN initial: " + pin);
                         alert.show();
                     });
                 });
 
-                vBox.getChildren().addAll(new Label("Cardurile tale:"), listaCarduri, btnEmit);
+                // 2. LOGICA PENTRU SCHIMBARE PIN
+                btnChangePin.setOnAction(ev -> {
+                    Card selectedCard = listaCarduri.getSelectionModel().getSelectedItem();
+                    if(selectedCard != null) {
+                        TextInputDialog pinDialog = new TextInputDialog();
+                        pinDialog.setTitle("Schimbare PIN");
+                        pinDialog.setHeaderText("Schimbare PIN pentru cardul:\n" + selectedCard.getCardNumber());
+                        pinDialog.setContentText("Introdu noul PIN (4 cifre):");
+
+                        pinDialog.showAndWait().ifPresent(newPin -> {
+                            if(newPin.matches("\\d{4}")) {
+                                selectedCard.setPin(newPin); // Asigură-te că ai setPin() în clasa Card
+                                Alert a = new Alert(Alert.AlertType.INFORMATION, "PIN schimbat cu succes!");
+                                a.show();
+                                listaCarduri.refresh(); // Actualizăm vizual
+                            } else {
+                                afiseazaEroare("PIN-ul trebuie să conțină exact 4 cifre!");
+                            }
+                        });
+                    } else {
+                        afiseazaEroare("Selectează un card din listă mai întâi!");
+                    }
+                });
+
+                HBox cardBtns = new HBox(10, btnEmit, btnChangePin);
+                vBox.getChildren().addAll(new Label("Cardurile tale:"), listaCarduri, cardBtns);
                 dialog.getDialogPane().setContent(vBox);
                 dialog.showAndWait();
             } else {
-                afiseazaEroare("Selectează un cont din listă pentru a gestiona cardurile!");
+                afiseazaEroare("Selectează un cont din listă!");
             }
         });
 
 
         btnLogout.setOnAction(e -> app.logout());
 
-        VBox layout = new VBox(20, welcomeLabel, topActions, new Label("Conturile tale:"), accountsList, bottomActions, btnLogout);
+        VBox layout = new VBox(20, welcomeLabel,totalBalanceLabel, topActions, new Label("Conturile tale:"), accountsList, bottomActions, btnLogout);
         layout.setPadding(new Insets(25));
         layout.setAlignment(Pos.CENTER);
 
@@ -277,12 +337,25 @@ public class UserDashboardView {
 
 
 
-    private static void actualizeazaListaConturi(ListView<String> listView, Customer customer) {
+    private static void actualizeazaConturi(ListView<String> listView, Customer customer) {
         listView.getItems().clear();
         for (Account acc : customer.getAccounts()) {
             String tip = (acc instanceof SavingsAccount) ? "[Economii]" : "[Curent]";
             listView.getItems().add(acc.getIban() + " - " + tip + " - Sold: " + acc.getBalance() + " RON");
         }
+    }
+
+    private static void actualizeazaSold(ListView<String> listView, Label totalLabel, Customer customer, BankingService service) {
+        listView.getItems().clear();
+        double soldTotal = 0;
+
+        for (Account acc : customer.getAccounts()) {
+            listView.getItems().add(acc.getIban() + " - Sold: " + acc.getBalance() + " RON");
+            // Folosim funcția ta cerută
+            soldTotal += service.getAccountBalance(acc.getIban());
+        }
+
+        totalLabel.setText("Sold Total (Toate conturile): " + String.format("%.2f", soldTotal) + " RON");
     }
 
     // Metodă utilitară pentru a genera un IBAN fictiv

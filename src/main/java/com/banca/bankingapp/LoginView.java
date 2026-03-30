@@ -34,7 +34,7 @@ public class LoginView {
             if (role.equals("ADMIN")) {
                 messageLabel.setText("Admin temporar indisponibil în module!");
                 messageLabel.setStyle("-fx-text-fill: red;");
-                // app.showAdminDashboard(); -> Vom adăuga asta mai târziu
+                app.showAdminDashboard();
             } else if (role.equals("USER")) {
                 Customer customer = bankingService.getCustomers().stream()
                         .filter(c -> c.getUsername().equals(user))
