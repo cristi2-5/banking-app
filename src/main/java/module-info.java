@@ -1,6 +1,7 @@
 module com.banca.bankingapp {
     requires javafx.controls;
     requires javafx.fxml;
+    requires java.sql;
 
 
     opens com.banca.bankingapp to javafx.fxml;

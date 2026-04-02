@@ -1,5 +1,7 @@
 package com.banca.bankingapp.models;
 
+import com.banca.bankingapp.services.TransactionRepository;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -51,9 +53,12 @@ abstract public class Account {
                 "DEPOSIT",
                 amount,
                 "Depunere numerar",
-                System.currentTimeMillis()
+
+                System.currentTimeMillis(),
+                getIban()
         );
         this.transactions.add(t);
+        TransactionRepository.getInstance().save(t);
     }
 
     public boolean withdraw(double amount){
@@ -65,9 +70,11 @@ abstract public class Account {
                     "RETRAGERE",
                     amount,
                     "Retragere numerar",
-                    System.currentTimeMillis()
+                    System.currentTimeMillis(),
+                    getIban()
             );
             this.transactions.add(t);
+            TransactionRepository.getInstance().save(t);
             return true;
         }
         else if(amount>balance)
@@ -83,6 +90,10 @@ abstract public class Account {
 
     protected void setBalance(double amount){
         balance = amount;
+    }
+
+    public void addTransaction(Transaction t){
+        transactions.add(t);
     }
 
     public abstract String getAccountType();

@@ -1,10 +1,9 @@
 package com.banca.bankingapp.services;
 
-import com.banca.bankingapp.models.Account;
-import com.banca.bankingapp.models.Customer;
-import com.banca.bankingapp.models.SavingsAccount;
-import com.banca.bankingapp.models.Transaction;
+import com.banca.bankingapp.models.*;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class BankingService {
@@ -16,6 +15,42 @@ public class BankingService {
     public BankingService() {
         this.customers = new TreeSet<>();
         this.accounts = new HashMap<>();
+        loadDataFromDatabase();
+    }
+
+    public void loadDataFromDatabase() {
+        List<Customer> dbCustomers = CustomerRepository.getInstance().findAll();
+        for (Customer c : dbCustomers) {
+            this.customers.add(c);
+        }
+
+        List<Account> dbAccounts = AccountRepository.getInstance().findAll();
+        for (Account acc : dbAccounts) {
+            this.accounts.put(acc.getIban(), acc);
+
+            Customer owner = findCustomerByCnp(acc.getOwner().getCnp());
+            if (owner != null) {
+                owner.addAccount(acc);
+            }
+        }
+
+        List<Card> dbCards = CardRepository.getInstance().findAll();
+        for (Card card : dbCards) {
+            Account acc = accounts.get(card.getAccount().getIban());
+            if (acc != null) {
+                acc.addCard(card);
+            }
+        }
+
+        List<Transaction> dbTransactions = TransactionRepository.getInstance().findAll();
+        for (Transaction t : dbTransactions) {
+            Account acc = accounts.get(t.getAccountIban());
+            if (acc != null) {
+                acc.addTransaction(t);
+            }
+        }
+
+        System.out.println("✅ Date încărcate: " + customers.size() + " clienți și " + accounts.size() + " conturi.");
     }
 
     public String login(String username, String password) {
@@ -34,6 +69,8 @@ public class BankingService {
 
     public void addCustomer(Customer customer){
         customers.add(customer);
+        CustomerRepository.getInstance().save(customer);
+        AuditService.getInstance().logAction(customer.getUsername()+ " s-a inregistrat cu succes!");
     }
 
     public Set<Customer> getCustomers(){
@@ -51,6 +88,7 @@ public class BankingService {
         Customer c = findCustomerByCnp(customerCnp);
         if(c!=null){
             c.addAccount(account);
+            AccountRepository.getInstance().save(account);
             accounts.put(account.getIban(),account);
         }
     }
@@ -60,6 +98,8 @@ public class BankingService {
         if(a!=null)
         {
             a.deposit(amount);
+            AccountRepository.getInstance().update(a);
+
             String ownerName = a.getOwner().getLastName() + " " + a.getOwner().getFirstName();
             String ownerCnp = a.getOwner().getCnp();
 
@@ -71,6 +111,8 @@ public class BankingService {
         Account a = accounts.get(iban);
         if(a!=null){
             a.withdraw(amount);
+            AccountRepository.getInstance().update(a);
+
             String ownerName = a.getOwner().getLastName() + " " + a.getOwner().getFirstName();
             String ownerCnp = a.getOwner().getCnp();
 
@@ -95,7 +137,15 @@ public class BankingService {
             else{
                 s.withdraw(amount);
                 d.deposit(amount);
+                AccountRepository.getInstance().update(s);
+                AccountRepository.getInstance().update(d);
 
+                long time = System.currentTimeMillis();
+                Transaction tSource = new Transaction(UUID.randomUUID().toString(), "TRANSFER_OUT", amount, "Transfer către " + destIban, time, sourceIban);
+                TransactionRepository.getInstance().save(tSource);
+
+                Transaction tDest = new Transaction(UUID.randomUUID().toString(), "TRANSFER_IN", amount, "Transfer de la " + sourceIban, time, destIban);
+                TransactionRepository.getInstance().save(tDest);
                 AuditService.getInstance().logAction("Transfer: " + amount + " RON | De la: " + sourceIban + " | Catre: " + destIban + " | Initiat de: " + senderName + " (CNP: " + senderCnp + ")");
             }
         }
@@ -131,6 +181,33 @@ public class BankingService {
                 SavingsAccount savingsAcc = (SavingsAccount) acc;
                 savingsAcc.applyInterest();
             }
+        }
+    }
+
+    public void issueCard(String iban, String pin, String type, double creditLimitIfApply) {
+        Account acc = accounts.get(iban);
+
+        if (acc != null) {
+            String cardNumber = "4111" + (100000000000L + new Random().nextLong(900000000000L));
+            String expiryDate = LocalDate.now().plusYears(4).format(DateTimeFormatter.ofPattern("MM/yy"));
+
+            boolean status = true;
+
+            Card newCard;
+            if ("CREDIT".equalsIgnoreCase(type)) {
+                newCard = new CreditCard(cardNumber, pin, expiryDate, status, acc, creditLimitIfApply);
+            } else {
+                newCard = new DebitCard(cardNumber, pin, expiryDate, status, acc);
+            }
+            acc.addCard(newCard);
+
+            String ownerName = acc.getOwner().getLastName();
+            String logInfo = String.format("Emitere Card %s | Nr: %s | Exp: %s | Cont: %s | Client: %s",
+                    type, cardNumber, expiryDate, iban, ownerName);
+            CardRepository.getInstance().save(newCard);
+            AuditService.getInstance().logAction(logInfo);
+        } else {
+            System.out.println("Eroare: IBAN-ul nu există!");
         }
     }
 

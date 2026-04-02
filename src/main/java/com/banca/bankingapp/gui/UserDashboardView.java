@@ -271,28 +271,21 @@ public class UserDashboardView {
                     choiceDialog.setContentText("Tip:");
 
                     choiceDialog.showAndWait().ifPresent(tipCard -> {
-                        String cardNum = (tipCard.equals("CreditCard") ? "5" : "4") + "000" + (1000 + new Random().nextInt(9000)) + "20003000";
+                        String iban1 = account.getIban();
                         String pin = "1234";
-                        String expiry = LocalDate.now().plusYears(4).toString();
+                        double limit = 5000.0;
 
-                        Card newCard = null;
+                        bankingService.issueCard(iban1, pin, tipCard, limit);
 
-                        if (tipCard.equals("CreditCard")) {
-                            newCard = new CreditCard(cardNum, pin, expiry, true, account, 5000.0);
-                        } else {
-                            newCard = new DebitCard(cardNum, pin, expiry, true, account);
-                        }
-
-                        // Salvăm în cont și afișăm pe ecran
-                        account.addCard(newCard);
-                        listaCarduri.getItems().add(newCard);
-
+                        listaCarduri.getItems().setAll(account.getCards());
                         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                        alert.setContentText("Card emis cu succes!\nTip: " + tipCard + "\nNr: " + cardNum + "\nPIN initial: " + pin);
+                        alert.setTitle("Succes");
+                        alert.setHeaderText(null);
+                        alert.setContentText("Cardul de tip " + tipCard + " a fost emis!\n" +
+                                "Toate detaliile au fost salvate și înregistrate în audit.");
                         alert.show();
                     });
                 });
-
                 // 2. LOGICA PENTRU SCHIMBARE PIN
                 btnChangePin.setOnAction(ev -> {
                     Card selectedCard = listaCarduri.getSelectionModel().getSelectedItem();
