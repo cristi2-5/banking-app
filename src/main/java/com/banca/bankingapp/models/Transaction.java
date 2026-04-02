@@ -1,4 +1,4 @@
-package com.banca.bankingapp;
+package com.banca.bankingapp.models;
 
 public final class Transaction {
     private final String transactionId;

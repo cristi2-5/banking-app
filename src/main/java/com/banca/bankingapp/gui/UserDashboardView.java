@@ -1,5 +1,7 @@
-package com.banca.bankingapp;
+package com.banca.bankingapp.gui;
 
+import com.banca.bankingapp.models.*;
+import com.banca.bankingapp.services.BankingService;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;

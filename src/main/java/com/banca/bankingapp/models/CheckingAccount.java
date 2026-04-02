@@ -1,9 +1,9 @@
-package com.banca.bankingapp;
+package com.banca.bankingapp.models;
 
-public class CheckingAccount extends Account{
+public class CheckingAccount extends Account {
     private final double maintenanceFee;
 
-    public CheckingAccount(String iban,double balance,Customer owner,double maintenanceFee){
+    public CheckingAccount(String iban, double balance, Customer owner, double maintenanceFee){
         super(iban,balance,owner);
         this.maintenanceFee = maintenanceFee;
     }

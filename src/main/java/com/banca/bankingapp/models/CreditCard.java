@@ -1,4 +1,4 @@
-package com.banca.bankingapp;
+package com.banca.bankingapp.models;
 
 public class CreditCard extends Card {
     private double creditLimit;

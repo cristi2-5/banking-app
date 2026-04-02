@@ -1,5 +1,10 @@
-package com.banca.bankingapp;
+package com.banca.bankingapp.gui;
 
+import com.banca.bankingapp.models.Address;
+import com.banca.bankingapp.models.CheckingAccount;
+import com.banca.bankingapp.models.Customer;
+import com.banca.bankingapp.models.SavingsAccount;
+import com.banca.bankingapp.services.BankingService;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;

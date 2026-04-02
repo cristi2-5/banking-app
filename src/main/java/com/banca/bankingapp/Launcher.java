@@ -1,6 +1,6 @@
 package com.banca.bankingapp;
 
-import javafx.application.Application;
+import com.banca.bankingapp.gui.BankingAppGUI;
 
 public class Launcher {
     public static void main(String[] args) {

@@ -1,10 +1,15 @@
-package com.banca.bankingapp;
+package com.banca.bankingapp.services;
+
+import com.banca.bankingapp.models.Account;
+import com.banca.bankingapp.models.Customer;
+import com.banca.bankingapp.models.SavingsAccount;
+import com.banca.bankingapp.models.Transaction;
 
 import java.util.*;
 
 public class BankingService {
     private Set<Customer> customers;
-    private Map<String,Account> accounts;
+    private Map<String, Account> accounts;
     private final String ADMIN_USER = "admin";
     private final String ADMIN_PASS = "admin123";
 
@@ -15,10 +20,12 @@ public class BankingService {
 
     public String login(String username, String password) {
         if (username.equals(ADMIN_USER) && password.equals(ADMIN_PASS)) {
+            AuditService.getInstance().logAction("Logare ADMIN");
             return "ADMIN";
         }
         for (Customer c : customers) {
             if (username.equals(c.getUsername()) && password.equals(c.getPassword())) {
+                AuditService.getInstance().logAction("Logare USER | Username: " + c.getUsername() + " | CNP: " + c.getCnp());
                 return "USER";
             }
         }
@@ -53,6 +60,10 @@ public class BankingService {
         if(a!=null)
         {
             a.deposit(amount);
+            String ownerName = a.getOwner().getLastName() + " " + a.getOwner().getFirstName();
+            String ownerCnp = a.getOwner().getCnp();
+
+            AuditService.getInstance().logAction("Depunere: " + amount + " RON | Cont: " + iban + " | Client: " + ownerName + " (CNP: " + ownerCnp + ")");
         }
     }
 
@@ -60,6 +71,10 @@ public class BankingService {
         Account a = accounts.get(iban);
         if(a!=null){
             a.withdraw(amount);
+            String ownerName = a.getOwner().getLastName() + " " + a.getOwner().getFirstName();
+            String ownerCnp = a.getOwner().getCnp();
+
+            AuditService.getInstance().logAction("Retragere: " + amount + " RON | Cont: " + iban + " | Client: " + ownerName + " (CNP: " + ownerCnp + ")");
         }
     }
 
@@ -69,12 +84,19 @@ public class BankingService {
 
         if(s!=null&&d!=null){
             double value = s.getBalance();
-            if(value<amount){
+
+            String senderName = s.getOwner().getLastName();
+            String senderCnp = s.getOwner().getCnp();
+
+            if(value < amount){
                 System.out.println("Transferul nu poate fi efectuat! Fonduri insuficiente");
+                AuditService.getInstance().logAction("Transfer ESUAT (Fonduri insuficiente) | Cont Sursa: " + sourceIban + " | Suma: " + amount);
             }
             else{
                 s.withdraw(amount);
                 d.deposit(amount);
+
+                AuditService.getInstance().logAction("Transfer: " + amount + " RON | De la: " + sourceIban + " | Catre: " + destIban + " | Initiat de: " + senderName + " (CNP: " + senderCnp + ")");
             }
         }
     }
@@ -126,6 +148,4 @@ public class BankingService {
             System.out.println("Eroare: Clientul nu a fost găsit.");
         }
     }
-
-
 }

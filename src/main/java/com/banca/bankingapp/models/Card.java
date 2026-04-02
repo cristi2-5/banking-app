@@ -1,4 +1,4 @@
-package com.banca.bankingapp;
+package com.banca.bankingapp.models;
 
 public abstract class Card {
     final private String cardNumber;

@@ -1,4 +1,4 @@
-package com.banca.bankingapp;
+package com.banca.bankingapp.models;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +34,7 @@ abstract public class Account {
     public List<Card> getCards() {
         return cards;
     }
+
 
     public void addCard(Card card) {
         this.cards.add(card);
